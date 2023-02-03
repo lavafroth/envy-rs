@@ -3,16 +3,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
-
-pub struct Job {
-    pub identifier: String,
-    pub substring: String,
-}
-
-pub struct JobResult {
-    pub expression: String,
-    pub job: Arc<Job>,
-}
+use crate::worker;
 
 fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>>>) -> bool {
     let exp = format!(
@@ -39,7 +30,7 @@ fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>
     matched && matches == 1
 }
 
-pub fn generate(job: Job, environment: Arc<HashMap<String, Vec<String>>>, tx: Sender<JobResult>) {
+pub fn generate(job: worker::Job, environment: Arc<HashMap<String, Vec<String>>>, tx: Sender<worker::Result>) {
     let job = Arc::new(job);
     let n = job.identifier.len();
 
@@ -67,7 +58,7 @@ pub fn generate(job: Job, environment: Arc<HashMap<String, Vec<String>>>, tx: Se
         // be valid.
         let s = String::from_utf8(expression_bytes).unwrap();
         if matches(&job.identifier, &s, &environment) {
-            tx.send(JobResult {
+            tx.send(worker::Result {
                 expression: s,
                 job: job.clone(),
             })

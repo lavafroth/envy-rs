@@ -10,6 +10,8 @@ use threadpool::ThreadPool;
 mod bitfield;
 mod glob;
 mod substring;
+mod payload;
+mod worker;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -42,7 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let pool = ThreadPool::new(args.threads);
 
-    let (tx, rx) = channel::<glob::JobResult>();
+    let (tx, rx) = channel::<worker::Result>();
 
     for (value, identifiers) in environment.iter() {
         let ss = substring::longest_common(&path, value).to_string();
@@ -50,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             for identifier in identifiers {
                 let tx = tx.clone();
                 let environment = environment.clone();
-                let job = glob::Job {
+                let job = worker::Job {
                     identifier: identifier.clone(),
                     substring: ss.clone(),
                 };
@@ -67,60 +69,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut recv = rx.iter();
 
-    loop {
-        if pool.active_count() == 0 && pool.queued_count() == 0 {
-            break;
-        }
-
+    while pool.active_count() != 0 && pool.queued_count() != 0 {
         if let Some(res) = recv.next() {
-            let payload = if res.job.substring == res.job.identifier {
-                let env_crib = format!("${{env:{}}}", &res.expression);
-                path.replace(&res.job.substring, &env_crib)
-            } else {
-                let mut original_value: Option<String> = None;
-                for (value, identifiers) in environment.iter() {
-                    if identifiers.iter().any(|i| res.job.identifier.eq(i)) {
-                        original_value = Some(value.clone());
-                        break;
-                    }
-                }
-                if let Some(value) = original_value {
-                    let begin = value.find(&res.job.substring).unwrap();
-
-                    let end = begin + res.job.substring.len() - 1;
-                    let env_crib = format!(
-                        "(\"${{env:{}}}\"[{}..{}]-join'')",
-                        &res.expression, begin, end
-                    );
-                    let mut interpolated = Vec::new();
-                    let parts = path.split(&res.job.substring).collect::<Vec<&str>>();
-
-                    for (i, part) in parts.iter().enumerate() {
-                        if part.is_empty() {
-                            if i == 0 {
-                                interpolated.push(env_crib.clone());
-                            }
-                            continue;
-                        }
-                        interpolated.push(format!("\"{part}\""));
-                        if i == parts.len() - 1 {
-                            continue;
-                        }
-                        interpolated.push(env_crib.clone());
-                    }
-                    interpolated.join("+")
-                } else {
-                    "".to_string()
-                }
-            };
+            let p = payload::format(res, &environment, &path);
             if let Some(length) = args.target_length {
-                if payload.len() > length {
+                if p.len() > length {
                     continue;
                 }
             }
-            println!("{payload}");
+            println!("{p}");
             if let Some(ref mut f) = handle {
-                writeln!(f, "{payload}")?;
+                writeln!(f, "{p}")?;
             }
         }
     }
