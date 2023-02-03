@@ -14,7 +14,7 @@ mod substring;
 #[derive(Parser)]
 #[command(author, version, about = None)]
 #[command(
-    long_about = "Generate obfuscated Windows PowerShell paths by globbing environment variables."
+    long_about = "Generate obfuscated Windows PowerShell payloads that resolve to paths by globbing environment variables."
 )]
 pub struct Args {
     #[arg(long)]

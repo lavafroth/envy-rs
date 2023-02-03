@@ -1,6 +1,6 @@
 # envy-rs
 
-Generate obfuscated PowerShell payloads that resolve to Windows paths.
+Generate obfuscated Windows PowerShell payloads that resolve to paths by globbing environment variables.
 
 This is a rewrite of my Golang project Envy in pure Rust. Basically the
 same thing without the race conditions.
