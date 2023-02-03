@@ -49,10 +49,10 @@ impl HayStack {
         let exp = format!(
             "^{}$",
             expression
-                .replace("*", ".*")
-                .replace("?", ".")
-                .replace("(", "\\(")
-                .replace(")", "\\)")
+                .replace('*', ".*")
+                .replace('?', ".")
+                .replace('(', "\\(")
+                .replace(')', "\\)")
         );
         let regexp = Regex::new(&exp).unwrap();
         let mut matches = 0;
@@ -83,13 +83,13 @@ impl HayStack {
         let variable = job.identifier.as_bytes();
         while !i.maxed() {
             let mut expression_bytes = Vec::new();
-            for x in 0..n {
+            for (x, v) in variable.iter().enumerate().take(n) {
                 if i.at(x) {
-                    expression_bytes.push(variable[x]);
+                    expression_bytes.push(*v);
                 } else if x > 0 && i.at(x - 1) && (i.at(x + 1) || x == n - 1) {
-                    expression_bytes.push('?' as u8);
+                    expression_bytes.push(b'?');
                 } else if i.at(x + 1) || x == n - 1 {
-                    expression_bytes.push('*' as u8);
+                    expression_bytes.push(b'*');
                 }
             }
 
@@ -124,7 +124,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let h = Arc::new(HayStack(environment.clone()));
 
     for (value, identifiers) in &environment {
-        let ss = substring::longest_common(&path, &value);
+        let ss = substring::longest_common(&path, value);
         if ss.len() > 2 {
             for identifier in identifiers {
                 let job = Arc::new(Job {
@@ -178,13 +178,13 @@ fn main() -> Result<(), Box<dyn Error>> {
                     let parts = path.split(&res.job.substring).collect::<Vec<&str>>();
 
                     for (i, part) in parts.iter().enumerate() {
-                        if part.len() == 0 {
+                        if part.is_empty() {
                             if i == 0 {
                                 interpolated.push(env_crib.clone());
                             }
                             continue;
                         }
-                        interpolated.push(format!("\"{}\"", part));
+                        interpolated.push(format!("\"{part}\""));
                         if i == parts.len() - 1 {
                             continue;
                         }
@@ -200,9 +200,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                     continue;
                 }
             }
-            println!("{}", payload);
+            println!("{payload}");
             if let Some(ref mut f) = handle {
-                writeln!(f, "{}", payload)?;
+                writeln!(f, "{payload}")?;
             }
         }
     }

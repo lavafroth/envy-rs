@@ -10,7 +10,7 @@ impl BitField {
             quo += 1;
         }
         BitField {
-            mask: 1 << rem - 1,
+            mask: (1 << rem) - 1,
             bytes: vec![0; quo],
         }
     }
