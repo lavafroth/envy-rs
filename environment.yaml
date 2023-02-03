@@ -1,0 +1,102 @@
+# This yaml file contains all the default environment variables
+# extracted from a fresh Windows 11 install.
+# The commented mappings are omitted (mapped to an empty string)
+# since they contain the username, "researcher" in this case, as
+# a part of their value. We want to generalize the globbing across
+# as many installs as possible.
+
+# "C:\\Users\\researcher\\OneDrive":
+#   - OneDrive
+# "C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\Windows\\System32\\OpenSSH\\;C:\\Users\\researcher\\AppData\\Local\\Microsoft\\WindowsApps;":
+#   - Path
+# "C:\\Users\\researcher\\AppData\\Roaming":
+#   - APPDATA
+# "\\Users\\researcher":
+#   - HOMEPATH
+# "C:\\Users\\researcher\\AppData\\Local":
+#   - LOCALAPPDATA
+# "\\\\WINDOWS":
+#   - LOGONSERVER
+# "8":
+#   - NUMBER_OF_PROCESSORS
+# "AMD64":
+#   - PROCESSOR_ARCHITECTURE
+# "AMD64 Family 23 Model 24 Stepping 1, AuthenticAMD":
+#   - PROCESSOR_IDENTIFIER
+# "23":
+#   - PROCESSOR_LEVEL
+# "1801":
+#   - PROCESSOR_REVISION
+# "C:\\Users\\researcher\\Documents\\WindowsPowerShell\\Modules;C:\\Program Files\\WindowsPowerShell\\Modules;C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules":
+#   - PSModulePath
+# "C:\\Users\\RESEAR~1\\AppData\\Local\\Temp":
+#   - TEMP
+# "C:\\Users\\RESEAR~1\\AppData\\Local\\Temp":
+#   - TMP
+# "researcher":
+#   - USERNAME
+# "C:\\Users\\researcher":
+#   - USERPROFILE
+
+# TEMP and TMP have Value : C:\Users\RESEAR~1\AppData\Local\Temp
+# We might want to use part of the value to resolve to C:\Users
+
+.com;.exe;.bat;.cmd;.vbs;.vbe;.js;.jse;.wsf;.wsh;.msc;.cpl:
+    - pathext
+'c:':
+    - homedrive
+    - systemdrive
+c:\program files:
+    - programfiles
+    - programw6432
+c:\program files (x86):
+    - programfiles(x86)
+c:\program files (x86)\common files:
+    - commonprogramfiles(x86)
+c:\program files\common files:
+    - commonprogramfiles
+    - commonprogramw6432
+c:\programdata:
+    - allusersprofile
+    - programdata
+c:\users\public:
+    - public
+c:\windows:
+    - systemroot
+    - windir
+? c:\windows\system32;c:\windows;c:\windows\system32\wbem;c:\windows\system32\windowspowershell\v1.0\;c:\windows\system32\openssh\;
+:   - path
+c:\windows\system32\cmd.exe:
+    - comspec
+c:\windows\system32\drivers\driverdata:
+    - driverdata
+console:
+    - sessionname
+default:
+    - fps_browser_user_profile_string
+internet explorer:
+    - fps_browser_app_profile_string
+windows:
+    - userdomain
+    - userdomain_roamingprofile
+windows_nt:
+    - os
+"":
+    - "appdata"
+    - "homepath"
+    - "localappdata"
+    - "logonserver"
+    - "number_of_processors"
+    - "onedrive"
+    - "processor_architecture"
+    - "processor_identifier"
+    - "processor_level"
+    - "processor_revision"
+    - "psmodulepath"
+    - "temp"
+    - "tmp"
+    - "username"
+    - "userprofile"
+    - "wslenv"
+    - "wt_profile_id"
+    - "wt_session"

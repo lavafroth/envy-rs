@@ -1,0 +1,16 @@
+[package]
+name = "envy-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde_yaml = "0.9.17"
+clap = { version = "4.1.4", features = ["derive"] }
+threadpool = "1.8.1"
+regex = "1.7.1"
+
+[dependencies.serde]
+version = "1.0.152"
+features = ["derive"]
