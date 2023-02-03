@@ -1,17 +1,15 @@
 use clap::Parser;
-use regex::Regex;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::sync::mpsc::channel;
-use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use threadpool::ThreadPool;
 mod bitfield;
 mod substring;
-use bitfield::BitField;
+mod glob;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -31,83 +29,6 @@ pub struct Args {
     target_length: Option<usize>,
 }
 
-pub struct Job {
-    identifier: String,
-    substring: String,
-}
-
-pub struct JobResult {
-    expression: String,
-    job: Arc<Job>,
-}
-
-#[derive(Debug)]
-pub struct HayStack(HashMap<String, Vec<String>>);
-
-impl HayStack {
-    pub fn matches(&self, needle: &str, expression: &str) -> bool {
-        let exp = format!(
-            "^{}$",
-            expression
-                .replace('*', ".*")
-                .replace('?', ".")
-                .replace('(', "\\(")
-                .replace(')', "\\)")
-        );
-        let regexp = Regex::new(&exp).unwrap();
-        let mut matches = 0;
-        let mut matched = false;
-        for identifiers in self.0.values() {
-            for identifier in identifiers {
-                if regexp.is_match(identifier) {
-                    if identifier.eq(needle) {
-                        matched = true;
-                    }
-                    matches += 1;
-                }
-            }
-        }
-        matched && matches == 1
-    }
-
-    pub fn generate(&self, job: Arc<Job>, tx: Sender<JobResult>) {
-        let n = job.identifier.len();
-
-        let mut i = BitField::new(n);
-        // The case where the bitfield is all zeros,
-        // it results in a simple '*' glob. This does
-        // not helop us a lot because everything can
-        // match that wildcard. So, we start with 1.
-        i.increment();
-
-        let variable = job.identifier.as_bytes();
-        while !i.maxed() {
-            let mut expression_bytes = Vec::new();
-            for (x, v) in variable.iter().enumerate().take(n) {
-                if i.at(x) {
-                    expression_bytes.push(*v);
-                } else if x > 0 && i.at(x - 1) && (i.at(x + 1) || x == n - 1) {
-                    expression_bytes.push(b'?');
-                } else if i.at(x + 1) || x == n - 1 {
-                    expression_bytes.push(b'*');
-                }
-            }
-
-            // This string parsing is safe to unwrap, it will always
-            // be valid.
-            let s = String::from_utf8(expression_bytes).unwrap();
-            if self.matches(&job.identifier, &s) {
-                tx.send(JobResult {
-                    expression: s,
-                    job: job.clone(),
-                })
-                .unwrap();
-            }
-            i.increment();
-        }
-    }
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     let path = args.path.to_lowercase();
@@ -116,27 +37,26 @@ fn main() -> Result<(), Box<dyn Error>> {
         args.custom_environment_map
             .unwrap_or(String::from("environment.yaml")),
     )?;
-    let environment: HashMap<String, Vec<String>> = serde_yaml::from_str(&s)?;
+
+    let environment: Arc<HashMap<String, Vec<String>>> = Arc::new(serde_yaml::from_str(&s)?);
 
     let pool = ThreadPool::new(args.threads);
 
-    let (tx, rx) = channel::<JobResult>();
-    let h = Arc::new(HayStack(environment.clone()));
+    let (tx, rx) = channel::<glob::JobResult>();
 
-    for (value, identifiers) in &environment {
-        let ss = substring::longest_common(&path, value);
+    for (value, identifiers) in environment.iter() {
+        let ss = substring::longest_common(&path, value).to_string();
         if ss.len() > 2 {
             for identifier in identifiers {
-                let job = Arc::new(Job {
-                    identifier: identifier.to_string(),
-                    substring: ss.to_string(),
-                });
-                let send_job = job.clone();
                 let tx = tx.clone();
-                let h = h.clone();
-                pool.execute(move || {
-                    h.generate(send_job, tx);
-                })
+                let environment = environment.clone();
+                let ss = ss.clone();
+                let id = identifier.clone();
+                pool.execute(move || glob::generate(
+                   glob::Job {
+                    identifier: id,
+                    substring: ss,
+                }, environment, tx))
             }
         }
     }
@@ -160,7 +80,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 path.replace(&res.job.substring, &env_crib)
             } else {
                 let mut original_value: Option<String> = None;
-                for (value, identifiers) in &environment {
+                for (value, identifiers) in environment.iter() {
                     if identifiers.iter().any(|i| res.job.identifier.eq(i)) {
                         original_value = Some(value.clone());
                         break;
