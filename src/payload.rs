@@ -1,7 +1,11 @@
 use crate::worker;
 use std::collections::HashMap;
 
-pub fn format(res: worker::Result, environment: &HashMap<String, Vec<String>>, path: &str) -> String {
+pub fn format(
+    res: worker::Result,
+    environment: &HashMap<String, Vec<String>>,
+    path: &str,
+) -> String {
     if res.job.substring == res.job.identifier {
         let env_crib = format!("${{env:{}}}", &res.expression);
         path.replace(&res.job.substring, &env_crib)

@@ -9,8 +9,8 @@ use std::sync::Arc;
 use threadpool::ThreadPool;
 mod bitfield;
 mod glob;
-mod substring;
 mod payload;
+mod substring;
 mod worker;
 
 #[derive(Parser)]

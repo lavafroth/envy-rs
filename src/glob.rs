@@ -1,9 +1,9 @@
 use crate::bitfield::BitField;
+use crate::worker;
 use regex::Regex;
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
-use crate::worker;
 
 fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>>>) -> bool {
     let exp = format!(
@@ -30,7 +30,11 @@ fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>
     matched && matches == 1
 }
 
-pub fn generate(job: worker::Job, environment: Arc<HashMap<String, Vec<String>>>, tx: Sender<worker::Result>) {
+pub fn generate(
+    job: worker::Job,
+    environment: Arc<HashMap<String, Vec<String>>>,
+    tx: Sender<worker::Result>,
+) {
     let job = Arc::new(job);
     let n = job.identifier.len();
 
