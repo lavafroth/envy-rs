@@ -49,7 +49,7 @@ Summary
 ### Obfuscating a path
 
 ```sh
-envy-rs "C:\\Windows\\System32\\calc.exe"
+envy-rs 'C:\Windows\System32\calc.exe'
 ```
 
 ```
@@ -72,7 +72,7 @@ be displayed.
 
 
 ```sh
-envy-rs "C:\\Windows\\System32\\calc.exe" --target-length 30
+envy-rs 'C:\Windows\System32\calc.exe' --target-length 30
 ```
 
 ```
@@ -91,7 +91,7 @@ the `-t` or the `--threads` flag. Unlike the golang version, this uses
 1:1 thread mapping instead of coroutines.
 
 ```sh
-envy-rs "C:\\Windows\\System32\\calc.exe" --threads 6
+envy-rs 'C:\Windows\System32\calc.exe' --threads 6
 ```
 
 We get the same output, just faster 😉.
@@ -103,7 +103,7 @@ but we can ask it to output to a file by passing a filename to the `-o` or
 the `--output` flag.
 
 ```sh
-envy-rs "C:\\Windows\\System32\\calc.exe" --output payloads.log
+envy-rs 'C:\Windows\System32\calc.exe' --output payloads.log
 ```
 
 ### Using a custom environment map
@@ -130,5 +130,5 @@ For example:
 Once you have your custom environment map, use it with Envy as the following:
 
 ```sh
-envy-rs "C:\\Windows\\System32\\calc.exe" --custom-environment-map your_custom_env.yaml
+envy-rs 'C:\Windows\System32\calc.exe' --custom-environment-map your_custom_env.yaml
 ```
