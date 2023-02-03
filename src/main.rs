@@ -50,13 +50,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             for identifier in identifiers {
                 let tx = tx.clone();
                 let environment = environment.clone();
-                let ss = ss.clone();
-                let id = identifier.clone();
-                pool.execute(move || glob::generate(
-                   glob::Job {
-                    identifier: id,
-                    substring: ss,
-                }, environment, tx))
+                let job = glob::Job {
+                    identifier: identifier.clone(),
+                    substring: ss.clone(),
+                };
+                pool.execute(move || glob::generate(job, environment, tx))
             }
         }
     }
