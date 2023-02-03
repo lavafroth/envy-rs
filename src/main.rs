@@ -1,11 +1,11 @@
+use std::{
+    collections::HashMap,
+    error::Error,
+    fs::{self, File},
+    io::Write,
+    sync::{mpsc::channel, Arc},
+};
 use clap::Parser;
-use std::collections::HashMap;
-use std::error::Error;
-use std::fs;
-use std::fs::File;
-use std::io::Write;
-use std::sync::mpsc::channel;
-use std::sync::Arc;
 use threadpool::ThreadPool;
 mod bitfield;
 mod glob;
