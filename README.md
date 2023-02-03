@@ -1,5 +1,6 @@
 # envy-rs
 
+A rewrite of my Golang project `envy` in Rust.
 Generate obfuscated PowerShell payloads that resolve to Windows paths.
 
 ## Installation
@@ -42,10 +43,10 @@ envy-rs "C:\\Windows\\System32\\calc.exe"
 
 ### Using a target length
 
-By default, the target length for the globbing is 0 (disabled).
-This means all possible payloads will be displayed. When a target
-length is set to `n`, only payloads that are at most `n` characters
-will be displayed. 
+By default, the target length for the globbing disabled, meaning
+all possible payloads will be displayed. When a target length is
+set to `n`, only payloads that are at most `n` characters will
+be displayed. 
 
 
 ```sh
