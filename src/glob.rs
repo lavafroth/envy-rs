@@ -1,7 +1,7 @@
 use crate::bitfield::BitField;
-use std::sync::mpsc::Sender;
-use std::collections::HashMap;
 use regex::Regex;
+use std::collections::HashMap;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 pub struct Job {
@@ -40,7 +40,6 @@ fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>
 }
 
 pub fn generate(job: Job, environment: Arc<HashMap<String, Vec<String>>>, tx: Sender<JobResult>) {
-
     let job = Arc::new(job);
     let n = job.identifier.len();
 

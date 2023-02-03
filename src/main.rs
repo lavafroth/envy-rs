@@ -8,8 +8,8 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use threadpool::ThreadPool;
 mod bitfield;
-mod substring;
 mod glob;
+mod substring;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
