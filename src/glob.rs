@@ -1,9 +1,11 @@
 use crate::bitfield::BitField;
 use crate::worker;
+use crossbeam::sync::WaitGroup;
 use regex::Regex;
-use std::collections::HashMap;
-use std::sync::mpsc::Sender;
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{mpsc::Sender, Arc},
+};
 
 fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>>>) -> bool {
     let exp = format!(
@@ -34,6 +36,7 @@ pub fn generate(
     job: worker::Job,
     environment: Arc<HashMap<String, Vec<String>>>,
     tx: Sender<worker::Result>,
+    wg: WaitGroup,
 ) {
     let job = Arc::new(job);
     let n = job.identifier.len();
@@ -70,4 +73,5 @@ pub fn generate(
         }
         i.increment();
     }
+    drop(wg);
 }

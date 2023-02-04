@@ -1,3 +1,5 @@
+use clap::Parser;
+use crossbeam::sync::WaitGroup;
 use std::{
     collections::HashMap,
     error::Error,
@@ -5,8 +7,6 @@ use std::{
     io::Write,
     sync::{mpsc::channel, Arc},
 };
-use clap::Parser;
-use threadpool::ThreadPool;
 mod bitfield;
 mod glob;
 mod payload;
@@ -33,33 +33,21 @@ pub struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let path = args.path.to_lowercase();
+    let path = Arc::new(args.path.to_lowercase());
 
-    let s = fs::read_to_string(
-        args.custom_environment_map
-            .unwrap_or(String::from("environment.yaml")),
-    )?;
+    let s = if let Some(filepath) = args.custom_environment_map {
+        fs::read_to_string(filepath)?
+    } else {
+        String::from(include_str!("environment.yaml"))
+    };
 
     let environment: Arc<HashMap<String, Vec<String>>> = Arc::new(serde_yaml::from_str(&s)?);
 
-    let pool = ThreadPool::new(args.threads);
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(args.threads)
+        .build()?;
 
     let (tx, rx) = channel::<worker::Result>();
-
-    for (value, identifiers) in environment.iter() {
-        let ss = substring::longest_common(&path, value).to_string();
-        if ss.len() > 2 {
-            for identifier in identifiers {
-                let tx = tx.clone();
-                let environment = environment.clone();
-                let job = worker::Job {
-                    identifier: identifier.clone(),
-                    substring: ss.clone(),
-                };
-                pool.execute(move || glob::generate(job, environment, tx))
-            }
-        }
-    }
 
     let mut handle = if let Some(filepath) = args.output {
         Some(File::create(filepath)?)
@@ -67,21 +55,44 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     };
 
-    let mut recv = rx.iter();
+    let wg = WaitGroup::new();
 
-    while pool.active_count() != 0 && pool.queued_count() != 0 {
-        if let Some(res) = recv.next() {
-            let p = payload::format(res, &environment, &path);
-            if let Some(length) = args.target_length {
-                if p.len() > length {
-                    continue;
+    {
+        let environment = environment.clone();
+        let path = path.clone();
+        pool.spawn(move || {
+            for res in rx {
+                let p = payload::format(res, &environment, &path);
+                if let Some(length) = args.target_length {
+                    if p.len() > length {
+                        continue;
+                    }
+                }
+                if let Some(ref mut f) = handle {
+                    writeln!(f, "{p}").expect("failed to write to output file handle.");
+                } else {
+                    println!("{p}");
                 }
             }
-            println!("{p}");
-            if let Some(ref mut f) = handle {
-                writeln!(f, "{p}")?;
+        });
+    }
+
+    for (value, identifiers) in environment.iter() {
+        let ss = substring::longest_common(&path, value).to_string();
+        if ss.len() > 2 {
+            for identifier in identifiers {
+                let tx = tx.clone();
+                let environment = environment.clone();
+                let wg = wg.clone();
+                let job = worker::Job {
+                    identifier: identifier.clone(),
+                    substring: ss.clone(),
+                };
+                pool.spawn(move || glob::generate(job, environment, tx, wg))
             }
         }
     }
+
+    wg.wait();
     Ok(())
 }
