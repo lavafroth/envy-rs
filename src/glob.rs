@@ -17,19 +17,17 @@ fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>
             .replace(')', "\\)")
     );
     let regexp = Regex::new(&exp).unwrap();
-    let mut matches = 0;
-    let mut matched = false;
     for identifiers in env.values() {
         for identifier in identifiers {
             if regexp.is_match(identifier) {
                 if needle.to_string().eq(identifier) {
-                    matched = true;
+                    return true;
                 }
-                matches += 1;
+                return false;
             }
         }
     }
-    matched && matches == 1
+    false
 }
 
 pub fn generate(
