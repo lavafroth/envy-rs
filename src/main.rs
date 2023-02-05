@@ -1,12 +1,12 @@
 use clap::Parser;
-use crossbeam::sync::WaitGroup;
 use std::{
     collections::HashMap,
     error::Error,
     fs::{self, File},
     io::Write,
-    sync::{mpsc::channel, Arc},
+    sync::Arc,
 };
+use crossbeam::{thread, channel::unbounded};
 mod bitfield;
 mod glob;
 mod payload;
@@ -44,11 +44,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let environment: Arc<HashMap<String, Vec<String>>> = Arc::new(serde_yaml::from_str(&s)?);
 
-    let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(args.threads + 1)
-        .build()?;
-
-    let (tx, rx) = channel::<worker::Result>();
 
     let mut handle = if let Some(filepath) = args.output {
         Some(File::create(filepath)?)
@@ -56,43 +51,56 @@ fn main() -> Result<(), Box<dyn Error>> {
         None
     };
 
-    let wg = WaitGroup::new();
+    thread::scope(|scope| {
 
-    {
-        let path = path.clone();
-        pool.spawn(move || {
-            for res in rx {
-                let p = payload::format(res, &path);
-                if let Some(length) = args.target_length {
-                    if p.len() > length {
-                        continue;
+        let (job_tx, job_rx) = unbounded::<worker::Job>();
+        let (tx, rx) = unbounded::<worker::Result>();
+
+        {
+            let path = path.clone();
+            let environment = environment.clone();
+            scope.spawn(move |_| {
+
+                for (value, identifiers) in environment.iter() {
+                    let ss = substring::longest_common(&path, value).to_string();
+                    if ss.len() > 2 {
+                        for identifier in identifiers {
+                            job_tx.send(worker::Job {
+                                identifier: identifier.clone(),
+                                substring: ss.clone(),
+                            }).expect("failed to send job to generative thread.");
+                        }
                     }
                 }
-                if let Some(ref mut f) = handle {
-                    writeln!(f, "{p}").expect("failed to write to output file handle.");
-                } else {
-                    println!("{p}");
+
+            });
+        }
+
+        for _ in 0..args.threads {
+            let environment = environment.clone();
+            let tx = tx.clone();
+            let job_rx = job_rx.clone();
+            scope.spawn(move |_| glob::generate(environment, job_rx, tx));
+        }
+
+        drop(job_rx);
+        drop(tx);
+
+        for res in rx {
+            let p = payload::format(res, &path);
+            if let Some(length) = args.target_length {
+                if p.len() > length {
+                    continue;
                 }
             }
-        });
-    }
-
-    for (value, identifiers) in environment.iter() {
-        let ss = substring::longest_common(&path, value).to_string();
-        if ss.len() > 2 {
-            for identifier in identifiers {
-                let tx = tx.clone();
-                let environment = environment.clone();
-                let wg = wg.clone();
-                let job = worker::Job {
-                    identifier: identifier.clone(),
-                    substring: ss.clone(),
-                };
-                pool.spawn(move || glob::generate(job, &environment, tx, wg))
+            if let Some(ref mut f) = handle {
+                writeln!(f, "{p}").expect("failed to write to output file handle.");
+            } else {
+                println!("{p}");
             }
         }
-    }
 
-    wg.wait();
+
+    }).unwrap();
     Ok(())
 }

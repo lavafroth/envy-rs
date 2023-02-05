@@ -98,11 +98,6 @@ impl WildMatch {
         }
     }
 
-    #[deprecated(since = "2.0.0", note = "use `matches` instead")]
-    pub fn is_match(&self, input: &str) -> bool {
-        self.matches(input)
-    }
-
     /// Returns true if pattern applies to the given input string
     pub fn matches(&self, input: &str) -> bool {
         if self.pattern.is_empty() {
@@ -132,7 +127,7 @@ impl WildMatch {
                     pattern_idx += 1;
                 }
                 Some(p) if p.has_wildcard => {
-                    if p.next_char == None {
+                    if p.next_char.is_none() {
                         return true;
                     }
                 }

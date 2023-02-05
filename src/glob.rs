@@ -1,16 +1,16 @@
 use crate::bitfield::BitField;
 use crate::worker;
-use crossbeam::sync::WaitGroup;
 use std::{
     collections::HashMap,
-    sync::{mpsc::Sender, Arc},
+    sync::Arc,
 };
 use crate::wildmatch;
+use crossbeam::channel::{Receiver, Sender};
 
 fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>>>) -> Option<String> {
     for (value, identifiers) in env.iter() {
         for identifier in identifiers {
-            if wildmatch::WildMatch::new(&expression).matches(&identifier) {
+            if wildmatch::WildMatch::new(expression).matches(identifier) {
                 if identifier.eq(needle) {
                     return Some(value.to_string());
                 }
@@ -22,46 +22,50 @@ fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>
 }
 
 pub fn generate(
-    job: worker::Job,
-    environment: &Arc<HashMap<String, Vec<String>>>,
+    environment: Arc<HashMap<String, Vec<String>>>,
+    job_rx: Receiver<worker::Job>,
     tx: Sender<worker::Result>,
-    wg: WaitGroup,
 ) {
-    let job = Arc::new(job);
-    let n = job.identifier.len();
+    for job in job_rx {
+        let job = Arc::new(job);
+        let n = job.identifier.len();
 
-    let mut i = BitField::new(n);
-    // The case where the bitfield is all zeros,
-    // it results in a simple '*' glob. This does
-    // not helop us a lot because everything can
-    // match that wildcard. So, we start with 1.
-    i.increment();
-
-    let variable = job.identifier.as_bytes();
-    while !i.maxed() {
-        let mut expression_bytes = Vec::new();
-        for (x, v) in variable.iter().enumerate().take(n) {
-            if i.at(x) {
-                expression_bytes.push(*v);
-            } else if x > 0 && i.at(x - 1) && (i.at(x + 1) || x == n - 1) {
-                expression_bytes.push(b'?');
-            } else if i.at(x + 1) || x == n - 1 {
-                expression_bytes.push(b'*');
-            }
-        }
-
-        // This string parsing is safe to unwrap, it will always
-        // be valid.
-        let s = String::from_utf8(expression_bytes).unwrap();
-        if let Some(value) = matches(&job.identifier, &s, &environment) {
-            tx.send(worker::Result {
-                value: value,
-                expression: s,
-                job: job.clone(),
-            })
-            .unwrap();
-        }
+        let mut i = BitField::new(n);
+        // The case where the bitfield is all zeros,
+        // it results in a simple '*' glob. This does
+        // not helop us a lot because everything can
+        // match that wildcard. So, we start with 1.
         i.increment();
+
+        let variable = job.identifier.as_bytes();
+        while !i.maxed() {
+            let mut expression_bytes = Vec::new();
+            for (x, v) in variable.iter().enumerate().take(n) {
+                if i.at(x) {
+                    expression_bytes.push(*v);
+                } else if x > 0 && i.at(x - 1) && (i.at(x + 1) || x == n - 1) {
+                    expression_bytes.push(b'?');
+                } else if i.at(x + 1) || x == n - 1 {
+                    expression_bytes.push(b'*');
+                }
+            }
+
+            // This string parsing is safe to unwrap, it will always
+            // be valid.
+            let expression = String::from_utf8(expression_bytes).unwrap();
+            if let Some(value) = matches(&job.identifier, &expression, &environment) {
+                let job = job.clone();
+                tx.send(worker::Result {
+                    value,
+                    expression,
+                    job,
+                })
+                .unwrap();
+            }
+            i.increment();
+        }
     }
-    drop(wg);
+
+    drop(tx);
+
 }
