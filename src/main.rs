@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let environment: Arc<HashMap<String, Vec<String>>> = Arc::new(serde_yaml::from_str(&s)?);
 
     let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(args.threads)
+        .num_threads(args.threads + 1)
         .build()?;
 
     let (tx, rx) = channel::<worker::Result>();

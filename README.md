@@ -24,26 +24,6 @@ Check out all the flags using:
 envy-rs --help
 ```
 
-## Performance
-
-Benchmarks measured using hyperfine show that the Rust version
-performs around 1.74 times faster than the Golang version.
-
-```
-hyperfine -N --runs 20 --warmup 3 "./envy-rs '.exe'" "./envy '.exe'"
-Benchmark 1: ./envy-rs '.exe'
-  Time (mean ± σ):       5.6 ms ±   0.5 ms    [User: 7.9 ms, System: 1.8 ms]
-  Range (min … max):     5.1 ms …   7.1 ms    20 runs
- 
-Benchmark 2: ./envy '.exe'
-  Time (mean ± σ):       9.8 ms ±   0.7 ms    [User: 12.4 ms, System: 2.3 ms]
-  Range (min … max):     8.6 ms …  11.7 ms    20 runs
- 
-Summary
-  './envy-rs '.exe'' ran
-    1.74 ± 0.20 times faster than './envy '.exe''
-```
-
 ## Examples
 
 ### Obfuscating a path
