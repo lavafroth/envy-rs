@@ -12,6 +12,7 @@ mod glob;
 mod payload;
 mod substring;
 mod worker;
+mod wildmatch;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
