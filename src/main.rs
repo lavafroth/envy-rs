@@ -33,7 +33,7 @@ pub struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let path = Arc::new(args.path.to_lowercase());
+    let path = args.path.to_lowercase();
 
     let s = if let Some(filepath) = args.custom_environment_map {
         fs::read_to_string(filepath)?
@@ -58,11 +58,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let wg = WaitGroup::new();
 
     {
-        let environment = environment.clone();
         let path = path.clone();
         pool.spawn(move || {
             for res in rx {
-                let p = payload::format(res, &environment, &path);
+                let p = payload::format(res, &path);
                 if let Some(length) = args.target_length {
                     if p.len() > length {
                         continue;
@@ -88,7 +87,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     identifier: identifier.clone(),
                     substring: ss.clone(),
                 };
-                pool.spawn(move || glob::generate(job, environment, tx, wg))
+                pool.spawn(move || glob::generate(job, &environment, tx, wg))
             }
         }
     }

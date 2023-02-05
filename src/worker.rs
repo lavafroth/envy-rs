@@ -6,6 +6,7 @@ pub struct Job {
 }
 
 pub struct Result {
+    pub value: String,
     pub expression: String,
     pub job: Arc<Job>,
 }

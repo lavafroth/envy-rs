@@ -7,7 +7,7 @@ use std::{
     sync::{mpsc::Sender, Arc},
 };
 
-fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>>>) -> bool {
+fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>>>) -> Option<String> {
     let exp = format!(
         "^{}$",
         expression
@@ -17,22 +17,22 @@ fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>
             .replace(')', "\\)")
     );
     let regexp = Regex::new(&exp).unwrap();
-    for identifiers in env.values() {
+    for (value, identifiers) in env.iter() {
         for identifier in identifiers {
             if regexp.is_match(identifier) {
                 if needle.to_string().eq(identifier) {
-                    return true;
+                    return Some(value.clone());
                 }
-                return false;
+                return None;
             }
         }
     }
-    false
+    None
 }
 
 pub fn generate(
     job: worker::Job,
-    environment: Arc<HashMap<String, Vec<String>>>,
+    environment: &Arc<HashMap<String, Vec<String>>>,
     tx: Sender<worker::Result>,
     wg: WaitGroup,
 ) {
@@ -62,8 +62,9 @@ pub fn generate(
         // This string parsing is safe to unwrap, it will always
         // be valid.
         let s = String::from_utf8(expression_bytes).unwrap();
-        if matches(&job.identifier, &s, &environment) {
+        if let Some(value) = matches(&job.identifier, &s, &environment) {
             tx.send(worker::Result {
+                value: value,
                 expression: s,
                 job: job.clone(),
             })
