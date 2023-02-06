@@ -9,7 +9,6 @@ use std::{
 };
 mod bitfield;
 mod glob;
-mod payload;
 mod substring;
 mod worker;
 
@@ -84,7 +83,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         drop(tx);
 
         for res in rx {
-            let p = payload::format(res, &path);
+            let p = res.format(&path);
             if let Some(length) = args.target_length {
                 if p.len() > length {
                     continue;
