@@ -11,7 +11,6 @@ mod bitfield;
 mod glob;
 mod payload;
 mod substring;
-mod wildmatch;
 mod worker;
 
 #[derive(Parser)]

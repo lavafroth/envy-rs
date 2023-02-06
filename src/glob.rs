@@ -1,8 +1,137 @@
 use crate::bitfield::BitField;
-use crate::wildmatch::WildMatch;
 use crate::worker;
 use crossbeam::channel::{Receiver, Sender};
 use std::{collections::HashMap, sync::Arc};
+
+pub struct Glob {
+    pattern: Vec<State>,
+    max_questionmarks: usize,
+}
+
+struct State {
+    next_char: Option<char>,
+    has_wildcard: bool,
+}
+
+impl Glob {
+    /// Constructor with pattern which can be used for matching.
+    pub fn new(pattern: &str) -> Glob {
+        let mut simplified: Vec<State> = Vec::with_capacity(pattern.len());
+        let mut prev_was_star = false;
+        let mut max_questionmarks: usize = 0;
+        let mut questionmarks: usize = 0;
+        for current_char in pattern.chars() {
+            match current_char {
+                '*' => {
+                    prev_was_star = true;
+                    max_questionmarks = std::cmp::max(max_questionmarks, questionmarks + 1);
+                    questionmarks = 0;
+                }
+                _ => {
+                    if current_char == '?' {
+                        questionmarks += 1;
+                    }
+                    let s = State {
+                        next_char: Some(current_char),
+                        has_wildcard: prev_was_star,
+                    };
+                    simplified.push(s);
+                    prev_was_star = false;
+                }
+            }
+        }
+
+        if !pattern.is_empty() {
+            let final_state = State {
+                next_char: None,
+                has_wildcard: prev_was_star,
+            };
+            simplified.push(final_state);
+        }
+
+        Glob {
+            pattern: simplified,
+            max_questionmarks,
+        }
+    }
+
+    /// Returns true if pattern applies to the given input string
+    pub fn matches(&self, input: &str) -> bool {
+        if self.pattern.is_empty() {
+            return input.is_empty();
+        }
+        let mut pattern_idx = 0;
+        const NONE: usize = usize::MAX;
+        let mut last_wildcard_idx = NONE;
+        let mut questionmark_matches: Vec<char> = Vec::with_capacity(self.max_questionmarks);
+        for input_char in input.chars() {
+            match self.pattern.get(pattern_idx) {
+                None => {
+                    return false;
+                }
+                Some(p) if p.next_char == Some('?') => {
+                    if p.has_wildcard {
+                        last_wildcard_idx = pattern_idx;
+                    }
+                    pattern_idx += 1;
+                    questionmark_matches.push(input_char);
+                }
+                Some(p) if p.next_char == Some(input_char) => {
+                    if p.has_wildcard {
+                        last_wildcard_idx = pattern_idx;
+                        questionmark_matches.clear();
+                    }
+                    pattern_idx += 1;
+                }
+                Some(p) if p.has_wildcard => {
+                    if p.next_char.is_none() {
+                        return true;
+                    }
+                }
+                _ => {
+                    if last_wildcard_idx == NONE {
+                        return false;
+                    }
+                    if !questionmark_matches.is_empty() {
+                        // Try to match a different set for questionmark
+                        let mut questionmark_idx = 0;
+                        let current_idx = pattern_idx;
+                        pattern_idx = last_wildcard_idx;
+                        for prev_state in self.pattern[last_wildcard_idx + 1..current_idx].iter() {
+                            if self.pattern[pattern_idx].next_char == Some('?') {
+                                pattern_idx += 1;
+                                continue;
+                            }
+                            let mut prev_input_char = prev_state.next_char;
+                            if prev_input_char == Some('?') {
+                                prev_input_char = Some(questionmark_matches[questionmark_idx]);
+                                questionmark_idx += 1;
+                            }
+                            if self.pattern[pattern_idx].next_char == prev_input_char {
+                                pattern_idx += 1;
+                            } else {
+                                pattern_idx = last_wildcard_idx;
+                                questionmark_matches.clear();
+                                break;
+                            }
+                        }
+                    } else {
+                        // Directly go back to the last wildcard
+                        pattern_idx = last_wildcard_idx;
+                    }
+
+                    // Match last char again
+                    if self.pattern[pattern_idx].next_char == Some('?')
+                        || self.pattern[pattern_idx].next_char == Some(input_char)
+                    {
+                        pattern_idx += 1;
+                    }
+                }
+            }
+        }
+        self.pattern[pattern_idx].next_char.is_none()
+    }
+}
 
 fn matches(
     needle: &str,
@@ -13,7 +142,7 @@ fn matches(
     let mut matched = None;
     for (value, identifiers) in env.iter() {
         for identifier in identifiers {
-            if WildMatch::new(expression).matches(identifier) {
+            if Glob::new(expression).matches(identifier) {
                 if identifier.eq(needle) {
                     matched = Some(value.to_string());
                 }
