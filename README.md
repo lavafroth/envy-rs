@@ -24,8 +24,8 @@ envy-rs --help
 ## Where is the Golang tool?
 
 This is a rewrite of my Golang project Envy in pure Rust. The Go tool
-has been sunset in favor of this tool because the former tool used poor
-concurrency patterns (leading to data races) and ineffectively used regular
+has been phased out in favor of this tool because the former used unsafe
+concurrency patterns (leading to data races) and ineffective regular
 expressions instead of implementing a smaller subset of it for the specific
 use case. In terms of performance this version is around 4 times faster than
 the go tool. Here are the benchmarks:
