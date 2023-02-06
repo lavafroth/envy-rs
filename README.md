@@ -2,9 +2,6 @@
 
 Generate obfuscated Windows PowerShell payloads that resolve to paths by globbing environment variables.
 
-This is a rewrite of my Golang project Envy in pure Rust. Basically the
-same thing without the race conditions.
-
 ## Installation
 
 ```sh
@@ -22,6 +19,30 @@ Check out all the flags using:
 
 ```
 envy-rs --help
+```
+
+## Where is the Golang tool?
+
+This is a rewrite of my Golang project Envy in pure Rust. The Go tool
+has been sunset in favor of this tool because the former tool used poor
+concurrency patterns (leading to data races) and ineffectively used regular
+expressions instead of implementing a smaller subset of it for the specific
+use case. In terms of performance this version is around 4 times faster than
+the go tool. Here are the benchmarks:
+
+```
+hyperfine -N --warmup 100 "./envy-rs 'console.exe'" "./envy 'console.exe'"
+Benchmark 1: ./envy-rs 'console.exe'
+  Time (mean ± σ):      17.0 ms ±   2.2 ms    [User: 22.5 ms, System: 8.8 ms]
+  Range (min … max):    14.1 ms …  23.9 ms    191 runs
+ 
+Benchmark 2: ./envy 'console.exe'
+  Time (mean ± σ):      92.7 ms ±  15.3 ms    [User: 100.8 ms, System: 16.3 ms]
+  Range (min … max):    75.3 ms … 129.0 ms    38 runs
+ 
+Summary
+  './envy-rs 'console.exe'' ran
+    5.46 ± 1.15 times faster than './envy 'console.exe''
 ```
 
 ## Examples
