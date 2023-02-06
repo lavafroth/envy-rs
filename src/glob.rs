@@ -1,22 +1,28 @@
 use crate::bitfield::BitField;
+use crate::wildmatch::WildMatch;
 use crate::worker;
-use std::{
-    collections::HashMap,
-    sync::Arc,
-};
-use crate::wildmatch;
 use crossbeam::channel::{Receiver, Sender};
+use std::{collections::HashMap, sync::Arc};
 
-fn matches(needle: &str, expression: &str, env: &Arc<HashMap<String, Vec<String>>>) -> Option<String> {
+fn matches(
+    needle: &str,
+    expression: &str,
+    env: &Arc<HashMap<String, Vec<String>>>,
+) -> Option<String> {
+    let mut count = 0;
+    let mut matched = None;
     for (value, identifiers) in env.iter() {
         for identifier in identifiers {
-            if wildmatch::WildMatch::new(expression).matches(identifier) {
+            if WildMatch::new(expression).matches(identifier) {
                 if identifier.eq(needle) {
-                    return Some(value.to_string());
+                    matched = Some(value.to_string());
                 }
-                return None;
+                count += 1;
             }
         }
+    }
+    if count == 1 {
+        return matched;
     }
     None
 }
@@ -67,5 +73,4 @@ pub fn generate(
     }
 
     drop(tx);
-
 }

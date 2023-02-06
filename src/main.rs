@@ -1,4 +1,5 @@
 use clap::Parser;
+use crossbeam::{channel::unbounded, thread};
 use std::{
     collections::HashMap,
     error::Error,
@@ -6,13 +7,12 @@ use std::{
     io::Write,
     sync::Arc,
 };
-use crossbeam::{thread, channel::unbounded};
 mod bitfield;
 mod glob;
 mod payload;
 mod substring;
-mod worker;
 mod wildmatch;
+mod worker;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -44,35 +44,33 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let environment: Arc<HashMap<String, Vec<String>>> = Arc::new(serde_yaml::from_str(&s)?);
 
-
     let mut handle = if let Some(filepath) = args.output {
         Some(File::create(filepath)?)
     } else {
         None
     };
 
+    let (job_tx, job_rx) = unbounded();
+    let (tx, rx) = unbounded();
+
     thread::scope(|scope| {
-
-        let (job_tx, job_rx) = unbounded::<worker::Job>();
-        let (tx, rx) = unbounded::<worker::Result>();
-
         {
             let path = path.clone();
             let environment = environment.clone();
             scope.spawn(move |_| {
-
                 for (value, identifiers) in environment.iter() {
                     let ss = substring::longest_common(&path, value).to_string();
                     if ss.len() > 2 {
                         for identifier in identifiers {
-                            job_tx.send(worker::Job {
-                                identifier: identifier.clone(),
-                                substring: ss.clone(),
-                            }).expect("failed to send job to generative thread.");
+                            job_tx
+                                .send(worker::Job {
+                                    identifier: identifier.clone(),
+                                    substring: ss.clone(),
+                                })
+                                .expect("failed to send job to generative thread.");
                         }
                     }
                 }
-
             });
         }
 
@@ -99,8 +97,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 println!("{p}");
             }
         }
-
-
-    }).unwrap();
+    })
+    .expect("failed to begin thread scope.");
     Ok(())
 }
