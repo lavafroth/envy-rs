@@ -10,7 +10,6 @@ use std::{
 mod bitfield;
 mod glob;
 mod substring;
-mod worker;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -61,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                     if ss.len() > 2 {
                         for identifier in identifiers {
                             job_tx
-                                .send(worker::Job {
+                                .send(glob::Job {
                                     identifier: identifier.clone(),
                                     substring: ss.clone(),
                                 })
@@ -76,14 +75,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             let environment = environment.clone();
             let tx = tx.clone();
             let job_rx = job_rx.clone();
-            scope.spawn(move |_| glob::generate(environment, job_rx, tx));
+            let path = path.clone();
+            scope.spawn(move |_| glob::generate(path, environment, job_rx, tx));
         }
 
         drop(job_rx);
         drop(tx);
 
-        for res in rx {
-            let p = res.format(&path);
+        for p in rx {
             if let Some(length) = args.target_length {
                 if p.len() > length {
                     continue;

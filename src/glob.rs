@@ -1,11 +1,15 @@
 use crate::bitfield::BitField;
-use crate::worker;
 use crossbeam::channel::{Receiver, Sender};
 use std::{collections::HashMap, sync::Arc};
 
 pub struct Glob {
     pattern: Vec<State>,
     max_questionmarks: usize,
+}
+
+pub struct Job {
+    pub identifier: String,
+    pub substring: String,
 }
 
 struct State {
@@ -157,12 +161,12 @@ fn matches(
 }
 
 pub fn generate(
+    path: String,
     environment: Arc<HashMap<String, Vec<String>>>,
-    job_rx: Receiver<worker::Job>,
-    tx: Sender<worker::Result>,
+    job_rx: Receiver<Job>,
+    tx: Sender<String>,
 ) {
     for job in job_rx {
-        let job = Arc::new(job);
         let n = job.identifier.len();
 
         let mut i = BitField::new(n);
@@ -189,12 +193,13 @@ pub fn generate(
             // be valid.
             let expression = String::from_utf8(expression_bytes).unwrap();
             if let Some(value) = matches(&job.identifier, &expression, &environment) {
-                let job = job.clone();
-                tx.send(worker::Result {
-                    value,
-                    expression,
-                    job,
-                })
+                tx.send(format(
+                    &value,
+                    &expression,
+                    &job.identifier,
+                    &job.substring,
+                    &path,
+                ))
                 .unwrap();
             }
             i.increment();
@@ -202,4 +207,33 @@ pub fn generate(
     }
 
     drop(tx);
+}
+
+fn format(value: &str, expression: &str, identifier: &str, substring: &str, path: &str) -> String {
+    if substring == identifier {
+        let env_crib = format!("${{env:{expression}}}");
+        path.replace(substring, &env_crib)
+    } else {
+        let begin = value.find(substring).unwrap();
+
+        let end = begin + substring.len() - 1;
+        let env_crib = format!("(\"${{env:{expression}}}\"[{begin}..{end}]-join'')");
+        let mut interpolated = Vec::new();
+        let parts = path.split(substring).collect::<Vec<&str>>();
+
+        for (i, part) in parts.iter().enumerate() {
+            if part.is_empty() {
+                if i == 0 {
+                    interpolated.push(env_crib.clone());
+                }
+                continue;
+            }
+            interpolated.push(format!("\"{part}\""));
+            if i == parts.len() - 1 {
+                continue;
+            }
+            interpolated.push(env_crib.clone());
+        }
+        interpolated.join("+")
+    }
 }
