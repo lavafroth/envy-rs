@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 serde_yaml = "0.9.17"
 crossbeam = "0.8.2"
+color-eyre = "0.6.2"
 
 [dependencies.serde]
 version = "1.0.152"

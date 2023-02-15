@@ -1,8 +1,8 @@
 use clap::Parser;
+use color_eyre::{eyre::Result, eyre::WrapErr, Help};
 use crossbeam::{channel::unbounded, thread};
 use std::{
     collections::HashMap,
-    error::Error,
     fs::{self, File},
     io::Write,
     sync::Arc,
@@ -29,12 +29,15 @@ pub struct Args {
     target_length: Option<usize>,
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
+    color_eyre::install()?;
     let args = Args::parse();
     let path = args.path.to_lowercase();
 
     let s = if let Some(filepath) = args.custom_environment_map {
-        fs::read_to_string(filepath)?
+        fs::read_to_string(filepath)
+            .wrap_err("Failed to read custom environment map from YAML file")
+            .suggestion("Try supplying a filepath that exists and can be read by you")?
     } else {
         String::from(include_str!("environment.yaml"))
     };
@@ -42,7 +45,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let environment: Arc<HashMap<String, Vec<String>>> = Arc::new(serde_yaml::from_str(&s)?);
 
     let mut handle = if let Some(filepath) = args.output {
-        Some(File::create(filepath)?)
+        Some(
+            File::create(&filepath)
+                .wrap_err(format!("Failed to create file at path {filepath}"))
+                .suggestion("Try supplying a filename at a location where you can write to")?,
+        )
     } else {
         None
     };
@@ -50,11 +57,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let (job_tx, job_rx) = unbounded();
     let (tx, rx) = unbounded();
 
-    thread::scope(|scope| {
+    thread::scope(|scope| -> Result<()> {
         {
             let path = path.clone();
             let environment = environment.clone();
-            scope.spawn(move |_| {
+            scope.spawn(move |_| -> Result<()> {
                 for (value, identifiers) in environment.iter() {
                     let ss = substring::longest_common(&path, value).to_string();
                     if ss.len() > 2 {
@@ -64,10 +71,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                                     identifier: identifier.clone(),
                                     substring: ss.clone(),
                                 })
-                                .expect("failed to send job to generative thread.");
+                                .wrap_err("Failed to send job to generation thread")?;
                         }
                     }
                 }
+                Ok(())
             });
         }
 
@@ -89,12 +97,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
             if let Some(ref mut f) = handle {
-                writeln!(f, "{p}").expect("failed to write to output file handle.");
+                writeln!(f, "{p}")
+                    .wrap_err("Failed to write to output file handle")
+                    .suggestion("Try supplying a filename at a location where you can write to")?;
             } else {
                 println!("{p}");
             }
         }
+        Ok(())
     })
-    .expect("failed to begin thread scope.");
+    .expect("Failed to begin thread scope")?;
     Ok(())
 }
