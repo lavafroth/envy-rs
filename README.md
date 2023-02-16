@@ -117,7 +117,7 @@ The file must be in the `yaml`. Each entry should be a **value** and it's
 children must be the **names of the environment variables** which resolve to
 this **value**. I admit this is a confusing design choice but since many
 environment variables resolve to the same value, it's more efficient to group
-the variables by their values instead of simple key-value pairs.
+them by their values instead of using simple key-value pairs.
 
 For example:
 
