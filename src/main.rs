@@ -17,15 +17,27 @@ mod substring;
     long_about = "Generate obfuscated Windows PowerShell payloads that resolve to paths by globbing environment variables."
 )]
 pub struct Args {
-    #[arg(long)]
+    /// Custom environment map file in YAML format
+    ///
+    /// For details, check out:
+    /// https://github.com/lavafroth/envy-rs#using-a-custom-environment-map
+    #[arg(long, value_name = "FILE")]
     custom_environment_map: Option<String>,
-    #[arg(short, long)]
+
+    /// Output to a file instead of standard output
+    #[arg(short, long, value_name = "FILE")]
     output: Option<String>,
+
+    /// The Windows path to obfuscate
     #[arg()]
     path: String,
+
+    /// Number of worker threads to spawn
     #[arg(short, long, default_value_t = 4)]
     threads: usize,
-    #[arg(long)]
+
+    /// Generate payloads of length less than or equal to the given length
+    #[arg(long, value_name = "LENGTH")]
     target_length: Option<usize>,
 }
 
