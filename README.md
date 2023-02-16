@@ -113,9 +113,11 @@ The contents of the environment map in `environment.yaml` will be used by
 Envy as a default. A custom environment map can be supplied through the
 `--custom-environment-map` flag.
 
-The file must be in the `yaml` format with the entries being the **values** of the
-environment variables with the **names of the environment variables** as children of
-list.
+The file must be in the `yaml`. Each entry should be a **value** and it's
+children must be the **names of the environment variables** which resolve to
+this **value**. I admit this is a confusing design choice but since many
+environment variables resolve to the same value, it's more efficient to group
+the variables by their values instead of simple key-value pairs.
 
 For example:
 
