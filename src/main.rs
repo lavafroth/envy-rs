@@ -21,7 +21,7 @@ pub struct Args {
     ///
     /// For details, check out:
     /// https://github.com/lavafroth/envy-rs#using-a-custom-environment-map
-    #[arg(long, value_name = "FILE")]
+    #[arg(short = 'e', long, value_name = "FILE")]
     custom_environment_map: Option<String>,
 
     /// Output to a file instead of standard output
@@ -37,7 +37,7 @@ pub struct Args {
     threads: usize,
 
     /// Generate payloads of length less than or equal to the given length
-    #[arg(long, value_name = "LENGTH")]
+    #[arg(short = 'n', long, value_name = "LENGTH")]
     target_length: Option<usize>,
 }
 
