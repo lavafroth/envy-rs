@@ -4,9 +4,11 @@ Generate obfuscated Windows PowerShell payloads that resolve to paths by globbin
 
 ## Installation
 
+Assuming you have [rustup](https://rustup.rs/) installed, run the following
+to install `envy-rs`:
+
 ```sh
-git clone https://github.com/lavafroth/envy-rs.git
-cd envy-rs && cargo build --release
+cargo install --git https://github.com/lavafroth/envy-rs
 ```
 
 ## Usage
