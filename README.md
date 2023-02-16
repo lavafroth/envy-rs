@@ -1,5 +1,7 @@
 # envy-rs
 
+![build](https://github.com/lavafroth/sinkmap/actions/workflows/rust.yml/badge.svg)
+
 Generate obfuscated Windows PowerShell payloads that resolve to paths by globbing environment variables.
 
 # Wiki
