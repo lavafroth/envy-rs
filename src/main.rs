@@ -20,7 +20,7 @@ pub struct Args {
     /// Custom environment map file in YAML format
     ///
     /// For details, check out:
-    /// https://github.com/lavafroth/envy-rs#using-a-custom-environment-map
+    /// https://github.com/lavafroth/envy-rs/wiki/Custom-Environment-Map
     #[arg(short = 'e', long, value_name = "FILE")]
     custom_environment_map: Option<String>,
 
