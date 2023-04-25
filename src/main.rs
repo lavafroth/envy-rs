@@ -1,3 +1,4 @@
+use bat::PrettyPrinter;
 use clap::Parser;
 use color_eyre::{eyre::Result, eyre::WrapErr, Help};
 use crossbeam::{channel::unbounded, thread};
@@ -39,6 +40,10 @@ pub struct Args {
     /// Generate payloads of length less than or equal to the given length
     #[arg(short = 'n', long, value_name = "LENGTH")]
     target_length: Option<usize>,
+
+    /// Syntax highlight the PowerShell output (slow)
+    #[arg(short = 'H', long)]
+    syntax_highlight: bool,
 }
 
 fn main() -> Result<()> {
@@ -112,6 +117,12 @@ fn main() -> Result<()> {
                 writeln!(f, "{p}")
                     .wrap_err("Failed to write to output file handle")
                     .suggestion("Try supplying a filename at a location where you can write to")?;
+            } else if args.syntax_highlight {
+                let p = format!("{}\n", p);
+                PrettyPrinter::new()
+                    .input_from_bytes(p.as_bytes())
+                    .language("powershell")
+                    .print()?;
             } else {
                 println!("{p}");
             }
