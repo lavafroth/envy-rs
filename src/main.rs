@@ -1,20 +1,12 @@
 use clap::Parser;
 use color_eyre::{eyre::Result, eyre::WrapErr, Help};
 use crossbeam::{channel::unbounded, thread};
-use std::io;
-use std::{
-    collections::HashMap,
-    fs::{self, File},
-    io::Write,
-    sync::Arc,
-};
-use syntect::easy::HighlightLines;
-use syntect::highlighting::{Style, ThemeSet};
-use syntect::parsing::{SyntaxDefinition, SyntaxSetBuilder};
-use syntect::util::as_24_bit_terminal_escaped;
+use std::{fs::File, io, io::Write};
 mod bitfield;
+mod env;
 mod glob;
 mod substring;
+mod syntax;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -54,45 +46,16 @@ fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Args::parse();
     let path = args.path.to_lowercase();
-
-    let s = if let Some(filepath) = args.custom_environment_map {
-        fs::read_to_string(filepath)
-            .wrap_err("Failed to read custom environment map from YAML file")
-            .suggestion("Try supplying a filepath that exists and can be read by you")?
-    } else {
-        String::from(include_str!("environment.yaml"))
-    };
-
-    let environment: Arc<HashMap<String, Vec<String>>> = Arc::new(serde_yaml::from_str(&s)?);
-
-    let mut handle = if let Some(filepath) = args.output {
-        Some(
+    let environment = env::load_or_default(args.custom_environment_map)?;
+    let mut handle: Box<dyn io::Write> = if let Some(filepath) = args.output.clone() {
+        Box::new(
             File::create(&filepath)
                 .wrap_err(format!("Failed to create file at path {filepath}"))
                 .suggestion("Try supplying a filename at a location where you can write to")?,
         )
     } else {
-        None
+        Box::new(io::stdout())
     };
-
-    let theme_data = include_bytes!("MonokaiDarkSoda.tmTheme");
-    let mut theme_reader = io::Cursor::new(theme_data);
-    let theme = ThemeSet::load_from_reader(&mut theme_reader)?;
-
-    let syntax = SyntaxDefinition::load_from_str(
-        include_str!("PowerShellSyntax.sublime-syntax"),
-        false,
-        None,
-    )?;
-    let mut syntax_set_builder = SyntaxSetBuilder::new();
-    syntax_set_builder.add(syntax);
-    let syntax_set = syntax_set_builder.build();
-
-    // This should always result in Some(syntax_reference) since we
-    // have explicitly sourced a PowerShell sublime-syntax file.
-    let syntax_reference = syntax_set.find_syntax_by_name("PowerShell").unwrap();
-    let mut hightlighter = HighlightLines::new(syntax_reference, &theme);
-
     // The main thread sends jobs to the workers through job_tx
     // and workers receive jobs through job_rx.
     let (job_tx, job_rx) = unbounded();
@@ -144,17 +107,17 @@ fn main() -> Result<()> {
                     continue;
                 }
             }
-            if let Some(ref mut f) = handle {
-                writeln!(f, "{p}")
-                    .wrap_err("Failed to write to output file handle")
-                    .suggestion("Try supplying a filename at a location where you can write to")?;
-            } else if args.syntax_highlight {
-                let ranges: Vec<(Style, &str)> = hightlighter.highlight_line(&p, &syntax_set)?;
-                let escaped = as_24_bit_terminal_escaped(&ranges[..], false);
-                println!("{escaped}");
-            } else {
-                println!("{p}");
-            }
+            writeln!(
+                handle,
+                "{}",
+                if args.syntax_highlight && args.output.is_none() {
+                    syntax::highlight(&p)?
+                } else {
+                    p
+                }
+            )
+            .wrap_err("Failed to write to output file handle")
+            .suggestion("Try supplying a filename at a location where you can write to")?;
         }
         Ok(())
     })
