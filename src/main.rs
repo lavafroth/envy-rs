@@ -1,13 +1,17 @@
-use bat::PrettyPrinter;
 use clap::Parser;
 use color_eyre::{eyre::Result, eyre::WrapErr, Help};
 use crossbeam::{channel::unbounded, thread};
+use std::io;
 use std::{
     collections::HashMap,
     fs::{self, File},
     io::Write,
     sync::Arc,
 };
+use syntect::easy::HighlightLines;
+use syntect::highlighting::{Style, ThemeSet};
+use syntect::parsing::{SyntaxDefinition, SyntaxSetBuilder};
+use syntect::util::as_24_bit_terminal_escaped;
 mod bitfield;
 mod glob;
 mod substring;
@@ -41,7 +45,7 @@ pub struct Args {
     #[arg(short = 'n', long, value_name = "LENGTH")]
     target_length: Option<usize>,
 
-    /// Syntax highlight the PowerShell output (slow)
+    /// Syntax highlight the PowerShell output
     #[arg(short = 'H', long)]
     syntax_highlight: bool,
 }
@@ -71,7 +75,30 @@ fn main() -> Result<()> {
         None
     };
 
+    let theme_data = include_bytes!("MonokaiDarkSoda.tmTheme");
+    let mut theme_reader = io::Cursor::new(theme_data);
+    let theme = ThemeSet::load_from_reader(&mut theme_reader)?;
+
+    let syntax = SyntaxDefinition::load_from_str(
+        include_str!("PowerShellSyntax.sublime-syntax"),
+        false,
+        None,
+    )?;
+    let mut syntax_set_builder = SyntaxSetBuilder::new();
+    syntax_set_builder.add(syntax);
+    let syntax_set = syntax_set_builder.build();
+
+    // This should always result in Some(syntax_reference) since we
+    // have explicitly sourced a PowerShell sublime-syntax file.
+    let syntax_reference = syntax_set.find_syntax_by_name("PowerShell").unwrap();
+    let mut hightlighter = HighlightLines::new(syntax_reference, &theme);
+
+    // The main thread sends jobs to the workers through job_tx
+    // and workers receive jobs through job_rx.
     let (job_tx, job_rx) = unbounded();
+
+    // Workers send results back to the main thread through tx
+    // and the main thread receives results from the workers through rx.
     let (tx, rx) = unbounded();
 
     thread::scope(|scope| -> Result<()> {
@@ -104,6 +131,10 @@ fn main() -> Result<()> {
             scope.spawn(move |_| glob::generate(path, environment, job_rx, tx));
         }
 
+        // Once we have sent copies of channels to setup communication with the workers,
+        // we must drop our own copy of the channels. Otherwise, the result receiver will
+        // keep waiting for results and the program will wait indefinitely after producing
+        // all of its possible outputs.
         drop(job_rx);
         drop(tx);
 
@@ -118,11 +149,9 @@ fn main() -> Result<()> {
                     .wrap_err("Failed to write to output file handle")
                     .suggestion("Try supplying a filename at a location where you can write to")?;
             } else if args.syntax_highlight {
-                let p = format!("{}\n", p);
-                PrettyPrinter::new()
-                    .input_from_bytes(p.as_bytes())
-                    .language("powershell")
-                    .print()?;
+                let ranges: Vec<(Style, &str)> = hightlighter.highlight_line(&p, &syntax_set)?;
+                let escaped = as_24_bit_terminal_escaped(&ranges[..], false);
+                println!("{escaped}");
             } else {
                 println!("{p}");
             }
