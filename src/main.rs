@@ -7,6 +7,7 @@ mod env;
 mod glob;
 mod substring;
 mod syntax;
+use signal_hook::{consts::SIGPIPE, iterator::Signals};
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -44,6 +45,9 @@ pub struct Args {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
+
+    let mut signals = Signals::new(&[SIGPIPE])?;
+
     let args = Args::parse();
     let path = args.path.to_lowercase();
     let environment = env::load_or_default(args.custom_environment_map)?;
@@ -85,6 +89,14 @@ fn main() -> Result<()> {
                 Ok(())
             });
         }
+
+        scope.spawn(|_| {
+            for sig in signals.forever() {
+                if SIGPIPE == sig {
+                    std::process::exit(1);
+                }
+            }
+        });
 
         for _ in 0..args.threads {
             let environment = environment.clone();
