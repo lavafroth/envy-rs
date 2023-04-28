@@ -1,7 +1,7 @@
 use clap::Parser;
 use color_eyre::{eyre::Result, eyre::WrapErr, Help};
 use crossbeam::{channel::unbounded, thread};
-use std::{fs::File, io, io::Write};
+use std::{fs::File, io, io::Write, path::PathBuf};
 mod bitfield;
 mod env;
 mod glob;
@@ -15,12 +15,14 @@ use signal_hook::{consts::SIGPIPE, iterator::Signals};
     long_about = "Generate obfuscated Windows PowerShell payloads that resolve to paths by globbing environment variables."
 )]
 pub struct Args {
-    /// Custom environment map file in YAML format
+    /// A map of environment variables and corresponding identifiers
     ///
-    /// For details, check out:
+    /// [default: builtin map]
+    ///
+    /// For using a custom map, check out:
     /// https://github.com/lavafroth/envy-rs/wiki/Custom-Environment-Map
-    #[arg(short = 'e', long, value_name = "FILE")]
-    custom_environment_map: Option<String>,
+    #[arg(short, long, value_name = "FILE")]
+    environment_map: Option<PathBuf>,
 
     /// Output to a file instead of standard output
     #[arg(short, long, value_name = "FILE")]
@@ -50,7 +52,7 @@ fn main() -> Result<()> {
 
     let args = Args::parse();
     let path = args.path.to_lowercase();
-    let environment = env::load_or_default(args.custom_environment_map)?;
+    let environment = env::load_or_default(args.environment_map)?;
     let mut handle: Box<dyn io::Write> = if let Some(filepath) = args.output.clone() {
         Box::new(
             File::create(&filepath)
