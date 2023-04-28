@@ -26,13 +26,12 @@ lazy_static! {
         ).unwrap();
         let mut syntax_set_builder = SyntaxSetBuilder::new();
         syntax_set_builder.add(syntax);
-        let syntax_set = syntax_set_builder.build();
-        syntax_set
+        syntax_set_builder.build()
     };
 }
 
 pub fn highlight(s: &str) -> Result<String> {
     let mut h = HighlightLines::new(SYNTAX.find_syntax_by_name("PowerShell").unwrap(), &THEME);
-    let ranges: Vec<(Style, &str)> = h.highlight_line(&s, &*SYNTAX)?;
+    let ranges: Vec<(Style, &str)> = h.highlight_line(s, &SYNTAX)?;
     Ok(as_24_bit_terminal_escaped(&ranges[..], false))
 }

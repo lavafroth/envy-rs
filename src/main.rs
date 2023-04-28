@@ -48,7 +48,7 @@ pub struct Args {
 fn main() -> Result<()> {
     color_eyre::install()?;
 
-    let mut signals = Signals::new(&[SIGPIPE])?;
+    let mut signals = Signals::new([SIGPIPE])?;
 
     let args = Args::parse();
     let path = args.path.to_lowercase();
