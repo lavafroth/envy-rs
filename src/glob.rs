@@ -1,4 +1,5 @@
 use crate::bitfield::BitField;
+use color_eyre::eyre::WrapErr;
 use crossbeam::channel::{Receiver, Sender};
 use std::{collections::HashMap, sync::Arc};
 
@@ -200,7 +201,8 @@ pub fn generate(
                     &job.substring,
                     &path,
                 ))
-                .unwrap();
+                .wrap_err("broken pipe or forced halt")
+                .expect("unable to send result from worker");
             }
             i.increment();
         }
