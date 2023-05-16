@@ -12,7 +12,7 @@ lazy_static = "1.4.0"
 signal-hook = "0.3.15"
 
 [dependencies.serde]
-version = "1.0.162"
+version = "1.0.163"
 features = ["derive"]
 
 [dependencies.clap]
