@@ -1,7 +1,11 @@
 [package]
 name = "envy-rs"
+description = "Generate obfuscated Windows PowerShell payloads that resolve to paths by globbing environment variables."
 version = "1.3.0"
+readme = "README.md"
 edition = "2021"
+license = "GPL-3.0-or-later"
+exclude = ["/assets"]
 
 [dependencies]
 serde_yaml = "0.9.21"
