@@ -179,22 +179,24 @@ pub fn generate(
         // match that wildcard. So, we start with 1.
         i.increment();
 
-        let variable = job.identifier.as_bytes();
+        let variable = &job.identifier;
         while !i.maxed() {
-            let mut expression_bytes = Vec::new();
-            for (x, v) in variable.iter().enumerate().take(n) {
-                if i.at(x) {
-                    expression_bytes.push(*v);
-                } else if x > 0 && i.at(x - 1) && (i.at(x + 1) || x == n - 1) {
-                    expression_bytes.push(b'?');
-                } else if i.at(x + 1) || x == n - 1 {
-                    expression_bytes.push(b'*');
-                }
-            }
-
-            // This string parsing is safe to unwrap, it will always
-            // be valid.
-            let expression = String::from_utf8(expression_bytes).unwrap();
+            let expression: String = variable
+                .chars()
+                .enumerate()
+                .take(n)
+                .filter_map(|(x, v)| {
+                    if i.at(x) {
+                        Some(v)
+                    } else if x > 0 && i.at(x - 1) && (i.at(x + 1) || x == n - 1) {
+                        Some('?')
+                    } else if i.at(x + 1) || x == n - 1 {
+                        Some('*')
+                    } else {
+                        None
+                    }
+                })
+                .collect();
             if let Some(value) = matches(&job.identifier, &expression, &environment) {
                 tx.send(format(
                     &value,
