@@ -3,6 +3,7 @@ use color_eyre::eyre::WrapErr;
 use crossbeam::channel::{Receiver, Sender};
 use std::{cmp::max, collections::HashMap, sync::Arc};
 
+#[derive(Default)]
 pub struct Glob {
     pattern: Vec<State>,
     max_questionmarks: usize,
@@ -20,12 +21,15 @@ struct State {
 
 impl Glob {
     /// Constructor with pattern which can be used for matching.
-    pub fn new(pattern: &str) -> Glob {
-        let mut simplified: Vec<State> = Vec::with_capacity(pattern.len());
+    pub fn new(expression: &str) -> Glob {
+        if expression.is_empty() {
+            return Glob::default();
+        }
+        let mut pattern: Vec<State> = Vec::with_capacity(expression.len());
         let mut has_wildcard = false;
         let mut max_questionmarks: usize = 0;
         let mut questionmarks: usize = 0;
-        for char in pattern.chars() {
+        for char in expression.chars() {
             has_wildcard = char == '*';
             if has_wildcard {
                 max_questionmarks = max(max_questionmarks, questionmarks + 1);
@@ -35,22 +39,19 @@ impl Glob {
             if char == '?' {
                 questionmarks += 1;
             }
-            simplified.push(State {
+            pattern.push(State {
                 character: Some(char),
                 has_wildcard, // previous was star
             });
         }
 
-        if !pattern.is_empty() {
-            let final_state = State {
-                character: None,
-                has_wildcard,
-            };
-            simplified.push(final_state);
-        }
+        pattern.push(State {
+            character: None,
+            has_wildcard,
+        });
 
         Glob {
-            pattern: simplified,
+            pattern,
             max_questionmarks,
         }
     }
