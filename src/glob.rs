@@ -1,7 +1,7 @@
 use crate::bitfield::BitField;
 use color_eyre::eyre::WrapErr;
 use crossbeam::channel::{Receiver, Sender};
-use std::{collections::HashMap, sync::Arc};
+use std::{cmp::max, collections::HashMap, sync::Arc};
 
 pub struct Glob {
     pattern: Vec<State>,
@@ -14,7 +14,7 @@ pub struct Job {
 }
 
 struct State {
-    next_char: Option<char>,
+    character: Option<char>,
     has_wildcard: bool,
 }
 
@@ -28,7 +28,7 @@ impl Glob {
         for char in pattern.chars() {
             has_wildcard = char == '*';
             if has_wildcard {
-                max_questionmarks = std::cmp::max(max_questionmarks, questionmarks + 1);
+                max_questionmarks = max(max_questionmarks, questionmarks + 1);
                 questionmarks = 0;
                 continue;
             }
@@ -36,14 +36,14 @@ impl Glob {
                 questionmarks += 1;
             }
             simplified.push(State {
-                next_char: Some(char),
+                character: Some(char),
                 has_wildcard, // previous was star
             });
         }
 
         if !pattern.is_empty() {
             let final_state = State {
-                next_char: None,
+                character: None,
                 has_wildcard,
             };
             simplified.push(final_state);
@@ -60,77 +60,89 @@ impl Glob {
         if self.pattern.is_empty() {
             return input.is_empty();
         }
-        let mut pattern_idx = 0;
-        const NONE: usize = usize::MAX;
-        let mut last_wildcard_idx = NONE;
-        let mut questionmark_matches: Vec<char> = Vec::with_capacity(self.max_questionmarks);
+        let mut index = 0;
+        let mut wildcard_at = None;
+        let mut question_matches = Vec::with_capacity(self.max_questionmarks);
         for input_char in input.chars() {
-            match self.pattern.get(pattern_idx) {
+            match self.pattern.get(index) {
                 None => {
                     return false;
                 }
-                Some(p) if p.next_char == Some('?') => {
+                Some(p) if p.character == Some('?') => {
                     if p.has_wildcard {
-                        last_wildcard_idx = pattern_idx;
+                        wildcard_at = Some(index);
                     }
-                    pattern_idx += 1;
-                    questionmark_matches.push(input_char);
+                    index += 1;
+                    question_matches.push(input_char);
                 }
-                Some(p) if p.next_char == Some(input_char) => {
+                Some(p) if p.character == Some(input_char) => {
                     if p.has_wildcard {
-                        last_wildcard_idx = pattern_idx;
-                        questionmark_matches.clear();
+                        wildcard_at = Some(index);
+                        question_matches.clear();
                     }
-                    pattern_idx += 1;
+                    index += 1;
                 }
-                Some(p) if p.has_wildcard => {
-                    if p.next_char.is_none() {
-                        return true;
-                    }
+                Some(p) if p.has_wildcard && p.character.is_none() => {
+                    return true;
                 }
                 _ => {
-                    if last_wildcard_idx == NONE {
-                        return false;
-                    }
-                    if !questionmark_matches.is_empty() {
-                        // Try to match a different set for questionmark
-                        let mut questionmark_idx = 0;
-                        let current_idx = pattern_idx;
-                        pattern_idx = last_wildcard_idx;
-                        for prev_state in self.pattern[last_wildcard_idx + 1..current_idx].iter() {
-                            if self.pattern[pattern_idx].next_char == Some('?') {
-                                pattern_idx += 1;
-                                continue;
-                            }
-                            let mut prev_input_char = prev_state.next_char;
-                            if prev_input_char == Some('?') {
-                                prev_input_char = Some(questionmark_matches[questionmark_idx]);
-                                questionmark_idx += 1;
-                            }
-                            if self.pattern[pattern_idx].next_char == prev_input_char {
-                                pattern_idx += 1;
+                    match wildcard_at {
+                        None => return false,
+                        Some(last_wildcard_index) => {
+                            if question_matches.is_empty() {
+                                // Directly go back to the last wildcard
+                                index = last_wildcard_index;
                             } else {
-                                pattern_idx = last_wildcard_idx;
-                                questionmark_matches.clear();
-                                break;
+                                index = match_different_set(
+                                    &self.pattern,
+                                    index,
+                                    &question_matches,
+                                    last_wildcard_index,
+                                );
+                                if index == last_wildcard_index {
+                                    question_matches.clear();
+                                }
+                            }
+
+                            // Match last char again
+                            let last_char = self.pattern[index].character;
+                            if last_char == Some('?') || last_char == Some(input_char) {
+                                index += 1;
                             }
                         }
-                    } else {
-                        // Directly go back to the last wildcard
-                        pattern_idx = last_wildcard_idx;
-                    }
-
-                    // Match last char again
-                    if self.pattern[pattern_idx].next_char == Some('?')
-                        || self.pattern[pattern_idx].next_char == Some(input_char)
-                    {
-                        pattern_idx += 1;
                     }
                 }
             }
         }
-        self.pattern[pattern_idx].next_char.is_none()
+        self.pattern[index].character.is_none()
     }
+}
+
+fn match_different_set(
+    pattern: &[State],
+    prev_index: usize,
+    question_matches: &[char],
+    last_wildcard_index: usize,
+) -> usize {
+    let mut question_idx = 0;
+    let mut index = last_wildcard_index;
+    for prev_state in pattern[index + 1..prev_index].iter() {
+        let current_char = pattern[index].character;
+        if current_char == Some('?') {
+            index += 1;
+            continue;
+        }
+        let mut prev_char = prev_state.character;
+        if prev_char == Some('?') {
+            prev_char.replace(question_matches[question_idx]);
+            question_idx += 1;
+        }
+        if current_char != prev_char {
+            return last_wildcard_index;
+        }
+        index += 1;
+    }
+    index
 }
 
 fn matches(
