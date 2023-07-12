@@ -65,9 +65,7 @@ impl Glob {
         let mut question_matches = Vec::with_capacity(self.max_questionmarks);
         for input_char in input.chars() {
             match self.pattern.get(index) {
-                None => {
-                    return false;
-                }
+                None => return false,
                 Some(p) if p.character == Some('?') => {
                     if p.has_wildcard {
                         wildcard_at = Some(index);
@@ -82,36 +80,32 @@ impl Glob {
                     }
                     index += 1;
                 }
-                Some(p) if p.has_wildcard && p.character.is_none() => {
-                    return true;
-                }
-                _ => {
-                    match wildcard_at {
-                        None => return false,
-                        Some(last_wildcard_index) => {
-                            if question_matches.is_empty() {
-                                // Directly go back to the last wildcard
-                                index = last_wildcard_index;
-                            } else {
-                                index = match_different_set(
-                                    &self.pattern,
-                                    index,
-                                    &question_matches,
-                                    last_wildcard_index,
-                                );
-                                if index == last_wildcard_index {
-                                    question_matches.clear();
-                                }
-                            }
+                Some(p) if p.has_wildcard && p.character.is_none() => return true,
 
-                            // Match last char again
-                            let last_char = self.pattern[index].character;
-                            if last_char == Some('?') || last_char == Some(input_char) {
-                                index += 1;
+                _ => match wildcard_at {
+                    None => return false,
+                    Some(last_wildcard_index) => {
+                        if question_matches.is_empty() {
+                            // Directly go back to the last wildcard
+                            index = last_wildcard_index
+                        } else {
+                            index = match_different_set(
+                                &self.pattern,
+                                index,
+                                &question_matches,
+                                last_wildcard_index,
+                            );
+                            if index == last_wildcard_index {
+                                question_matches.clear();
                             }
                         }
+                        // Match last char again
+                        let last_char = self.pattern[index].character;
+                        if last_char == Some('?') || last_char == Some(input_char) {
+                            index += 1;
+                        }
                     }
-                }
+                },
             }
         }
         self.pattern[index].character.is_none()
