@@ -145,22 +145,25 @@ fn matches(
     expression: &str,
     env: &Arc<HashMap<String, Vec<String>>>,
 ) -> Option<String> {
-    let mut count = 0;
-    let mut matched = None;
+    let mut matched = false;
+    let mut full_match = None;
+    let pattern = Glob::new(expression);
     for (value, identifiers) in env.iter() {
         for identifier in identifiers {
-            if Glob::new(expression).matches(identifier) {
-                if identifier.eq(needle) {
-                    matched = Some(value.to_string());
+            if pattern.matches(identifier) {
+                // If there was a match earlier we return None.
+                // There can be at most one full match.
+                if matched {
+                    return None;
                 }
-                count += 1;
+                if identifier.eq(needle) {
+                    full_match = Some(value.to_string());
+                }
+                matched = true;
             }
         }
     }
-    if count == 1 {
-        return matched;
-    }
-    None
+    full_match
 }
 
 pub fn generate(
