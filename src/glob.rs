@@ -22,34 +22,29 @@ impl Glob {
     /// Constructor with pattern which can be used for matching.
     pub fn new(pattern: &str) -> Glob {
         let mut simplified: Vec<State> = Vec::with_capacity(pattern.len());
-        let mut prev_was_star = false;
+        let mut has_wildcard = false;
         let mut max_questionmarks: usize = 0;
         let mut questionmarks: usize = 0;
-        for current_char in pattern.chars() {
-            match current_char {
-                '*' => {
-                    prev_was_star = true;
-                    max_questionmarks = std::cmp::max(max_questionmarks, questionmarks + 1);
-                    questionmarks = 0;
-                }
-                _ => {
-                    if current_char == '?' {
-                        questionmarks += 1;
-                    }
-                    let s = State {
-                        next_char: Some(current_char),
-                        has_wildcard: prev_was_star,
-                    };
-                    simplified.push(s);
-                    prev_was_star = false;
-                }
+        for char in pattern.chars() {
+            has_wildcard = char == '*';
+            if has_wildcard {
+                max_questionmarks = std::cmp::max(max_questionmarks, questionmarks + 1);
+                questionmarks = 0;
+                continue;
             }
+            if char == '?' {
+                questionmarks += 1;
+            }
+            simplified.push(State {
+                next_char: Some(char),
+                has_wildcard, // previous was star
+            });
         }
 
         if !pattern.is_empty() {
             let final_state = State {
                 next_char: None,
-                has_wildcard: prev_was_star,
+                has_wildcard,
             };
             simplified.push(final_state);
         }
