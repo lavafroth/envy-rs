@@ -9,7 +9,7 @@ keywords = ["pentest", "powershell", "glob", "obfuscation"]
 exclude = ["/assets"]
 
 [dependencies]
-serde_yaml = "0.9.22"
+serde_yaml = "0.9.23"
 crossbeam = "0.8.2"
 color-eyre = "0.6.2"
 syntect = "5.0.0"
