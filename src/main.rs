@@ -49,9 +49,8 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     let mut signal_contants = vec![signal_hook::consts::SIGINT];
-    if cfg!(not(target_os = "windows")) {
-        signal_contants.push(signal_hook::consts::SIGPIPE);
-    }
+    #[cfg(not(target_os = "windows"))]
+    signal_contants.push(signal_hook::consts::SIGPIPE);
     let mut signals = Signals::new(&signal_contants)?;
 
     let args = Args::parse();
@@ -98,14 +97,15 @@ fn main() -> Result<()> {
 
         scope.spawn(|_| {
             for sig in signals.forever() {
-                let broken_pipe = if cfg!(not(target_os = "windows")) {
-                    signal_hook::consts::SIGPIPE == sig
-                } else {
-                    false
-                };
-
-                if broken_pipe || signal_hook::consts::SIGINT == sig {
-                    std::process::exit(1);
+                match sig {
+                    #[cfg(not(target_os = "windows"))]
+                    signal_hook::consts::SIGPIPE => {
+                        std::process::exit(1);
+                    }
+                    signal_hook::consts::SIGINT => {
+                        std::process::exit(1);
+                    }
+                    _ => {}
                 }
             }
         });
