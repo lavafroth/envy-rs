@@ -14,7 +14,6 @@ crossbeam = "0.8.2"
 color-eyre = "0.6.2"
 syntect = "5.1.0"
 lazy_static = "1.4.0"
-signal-hook = "0.3.17"
 
 [dependencies.serde]
 version = "1.0.180"

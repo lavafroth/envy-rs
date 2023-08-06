@@ -7,7 +7,6 @@ mod env;
 mod glob;
 mod substring;
 mod syntax;
-use signal_hook::iterator::Signals;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -47,11 +46,6 @@ pub struct Args {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
-
-    let mut signal_contants = vec![signal_hook::consts::SIGINT];
-    #[cfg(not(target_os = "windows"))]
-    signal_contants.push(signal_hook::consts::SIGPIPE);
-    let mut signals = Signals::new(&signal_contants)?;
 
     let args = Args::parse();
     let path = args.path.to_lowercase();
@@ -94,21 +88,6 @@ fn main() -> Result<()> {
                 Ok(())
             });
         }
-
-        scope.spawn(|_| {
-            for sig in signals.forever() {
-                match sig {
-                    #[cfg(not(target_os = "windows"))]
-                    signal_hook::consts::SIGPIPE => {
-                        std::process::exit(1);
-                    }
-                    signal_hook::consts::SIGINT => {
-                        std::process::exit(1);
-                    }
-                    _ => {}
-                }
-            }
-        });
 
         for _ in 0..args.threads {
             let environment = environment.clone();
