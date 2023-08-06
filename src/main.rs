@@ -7,10 +7,7 @@ mod env;
 mod glob;
 mod substring;
 mod syntax;
-use signal_hook::{
-    consts::{SIGINT, SIGPIPE},
-    iterator::Signals,
-};
+use signal_hook::iterator::Signals;
 
 #[derive(Parser)]
 #[command(author, version, about = None)]
@@ -51,7 +48,11 @@ pub struct Args {
 fn main() -> Result<()> {
     color_eyre::install()?;
 
-    let mut signals = Signals::new([SIGPIPE, SIGINT])?;
+    let mut signal_contants = vec![signal_hook::consts::SIGINT];
+    if cfg!(not(target_os = "windows")) {
+        signal_contants.push(signal_hook::consts::SIGPIPE);
+    }
+    let mut signals = Signals::new(&signal_contants)?;
 
     let args = Args::parse();
     let path = args.path.to_lowercase();
@@ -97,7 +98,13 @@ fn main() -> Result<()> {
 
         scope.spawn(|_| {
             for sig in signals.forever() {
-                if SIGPIPE == sig || SIGINT == sig {
+                let broken_pipe = if cfg!(not(target_os = "windows")) {
+                    signal_hook::consts::SIGPIPE == sig
+                } else {
+                    false
+                };
+
+                if broken_pipe || signal_hook::consts::SIGINT == sig {
                     std::process::exit(1);
                 }
             }
