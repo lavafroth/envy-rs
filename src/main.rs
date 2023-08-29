@@ -111,7 +111,7 @@ fn main() -> Result<()> {
                     continue;
                 }
             }
-            writeln!(
+            if let Err(e) = writeln!(
                 handle,
                 "{}",
                 if args.syntax_highlight && args.output.is_none() {
@@ -119,9 +119,18 @@ fn main() -> Result<()> {
                 } else {
                     p
                 }
-            )
-            .wrap_err("Failed to write to output file handle")
-            .suggestion("Try supplying a filename at a location where you can write to")?;
+            ) {
+                match e.kind() {
+                    std::io::ErrorKind::BrokenPipe => return Ok(()),
+                    _ => {
+                        Err(e)
+                            .wrap_err("Failed to write to output file handle")
+                            .suggestion(
+                                "Try supplying a filename at a location where you can write to",
+                            )?;
+                    }
+                }
+            }
         }
         Ok(())
     })
