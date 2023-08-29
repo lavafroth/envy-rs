@@ -1,7 +1,7 @@
 use clap::Parser;
 use color_eyre::{eyre::Result, eyre::WrapErr, Help};
 use crossbeam::{channel::unbounded, thread};
-use std::{fs::File, io, io::Write, path::PathBuf};
+use std::{fs::File, io, io::Write, path::PathBuf, sync::Arc};
 mod bitfield;
 mod env;
 mod glob;
@@ -73,8 +73,9 @@ fn main() -> Result<()> {
             let environment = environment.clone();
             scope.spawn(move |_| -> Result<()> {
                 for (value, identifiers) in environment.iter() {
-                    let ss = substring::longest_common(&path, value).to_string();
+                    let ss = substring::longest_common(&path, value);
                     if ss.len() > 2 {
+                        let ss: Arc<str> = Arc::from(ss);
                         for identifier in identifiers {
                             job_tx
                                 .send(glob::Job {

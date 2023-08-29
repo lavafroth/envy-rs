@@ -9,3 +9,9 @@ Generate obfuscated Windows PowerShell payloads that resolve to paths by globbin
 # Wiki
 
 Documentation has moved to the [wiki](https://github.com/lavafroth/envy-rs/wiki/). Check it out!
+
+# Notice
+
+I prohibit use of this code for training any AI tool. In case an entity is found doing so, they shall have to
+transfer all the money made using the AI tool, including but not limited to profits as well as money reinvested
+into training, to me without any hesitation.
