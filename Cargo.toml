@@ -10,7 +10,7 @@ exclude = ["/assets"]
 
 [dependencies]
 serde_yaml = "0.9.27"
-crossbeam = "0.8.2"
+crossbeam = "0.8.3"
 color-eyre = "0.6.2"
 syntect = "5.1.0"
 lazy_static = "1.4.0"
