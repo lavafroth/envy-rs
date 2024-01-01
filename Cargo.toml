@@ -20,5 +20,5 @@ version = "1.0.193"
 features = ["derive"]
 
 [dependencies.clap]
-version = "4.4.11"
+version = "4.4.12"
 features = ["derive"]
