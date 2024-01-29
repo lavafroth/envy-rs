@@ -16,7 +16,7 @@ syntect = "5.1.0"
 lazy_static = "1.4.0"
 
 [dependencies.serde]
-version = "1.0.195"
+version = "1.0.196"
 features = ["derive"]
 
 [dependencies.clap]
