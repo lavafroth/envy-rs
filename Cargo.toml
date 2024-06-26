@@ -13,11 +13,6 @@ serde_yaml = "0.9.34"
 crossbeam = "0.8.4"
 color-eyre = "0.6.3"
 syntect = "5.2.0"
-lazy_static = "1.5.0"
-
-[dependencies.serde]
-version = "1.0.203"
-features = ["derive"]
 
 [dependencies.clap]
 version = "4.5.7"
