@@ -1,7 +1,8 @@
 use crate::bitfield::BitField;
-use color_eyre::{eyre::WrapErr, Result};
-use crossbeam::channel::{Receiver, Sender};
-use std::{collections::HashMap, sync::Arc};
+use async_channel::{Receiver, Sender};
+use color_eyre::eyre::WrapErr;
+use color_eyre::Result;
+use std::{collections::BTreeMap, sync::Arc};
 
 pub struct Job {
     pub identifier: String,
@@ -43,7 +44,7 @@ fn is_match(expression: &str, input: &str) -> bool {
     j == m
 }
 
-fn matches(needle: &str, expression: &str, env: &HashMap<String, Vec<String>>) -> Option<String> {
+fn matches(needle: &str, expression: &str, env: &BTreeMap<String, Vec<String>>) -> Option<String> {
     let mut full_match = None;
     for (value, identifiers) in env.iter() {
         for identifier in identifiers {
@@ -62,13 +63,13 @@ fn matches(needle: &str, expression: &str, env: &HashMap<String, Vec<String>>) -
     full_match
 }
 
-pub fn generate(
+pub async fn generate(
     path: String,
-    environment: Arc<HashMap<String, Vec<String>>>,
+    environment: Arc<BTreeMap<String, Vec<String>>>,
     job_rx: Receiver<Job>,
     tx: Sender<String>,
 ) -> Result<()> {
-    for job in job_rx {
+    while let Ok(job) = job_rx.recv().await {
         let n = job.identifier.len();
 
         let mut i = BitField::new(n);
@@ -104,6 +105,7 @@ pub fn generate(
                     &job.substring,
                     &path,
                 ))
+                .await
                 .wrap_err("unable to send result from worker")?;
             }
             i.increment();
