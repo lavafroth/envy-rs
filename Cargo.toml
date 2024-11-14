@@ -12,7 +12,7 @@ exclude = ["/assets"]
 serde_yaml = "0.9.34"
 syntect = "5.2.0"
 async-channel = "2.3.1"
-tokio = { version = "1.41.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.41.1", features = ["rt-multi-thread", "macros"] }
 color-eyre = "0.6.3"
 
 [dependencies.clap]
