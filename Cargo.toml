@@ -16,5 +16,5 @@ tokio = { version = "1.44.1", features = ["rt-multi-thread", "macros"] }
 color-eyre = "0.6.3"
 
 [dependencies.clap]
-version = "4.5.35"
+version = "4.5.36"
 features = ["derive"]
