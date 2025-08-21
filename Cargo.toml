@@ -17,5 +17,5 @@ eyre = "0.6.12"
 color-eyre = "0.6.4"
 
 [dependencies.clap]
-version = "4.5.41"
+version = "4.5.45"
 features = ["derive"]
