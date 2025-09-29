@@ -10,7 +10,7 @@ exclude = ["/assets"]
 
 [dependencies]
 serde_yaml = "0.9.34"
-syntect = "5.2.0"
+syntect = "5.3.0"
 async-channel = "2.5.0"
 tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros"] }
 eyre = "0.6.12"
